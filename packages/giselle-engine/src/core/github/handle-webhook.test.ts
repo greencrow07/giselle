@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 import type { GitHubEvent } from "./events/types";
 import { GitHubEventType } from "./events/types";
 import { isMatchingIntegrationSetting } from "./handle-webhook";
-import type { Command } from "./utils";
 
 describe("isMatchingIntegrationSetting", () => {
 	const mockSettingBase: WorkspaceGitHubIntegrationSetting = {
@@ -20,7 +19,7 @@ describe("isMatchingIntegrationSetting", () => {
 		event: "github.issue_comment.created", // Default, will be overridden
 		payloadMaps: [],
 		nextAction: "github.issue_comment.create",
-		callsign: "/giselle", // Default, will be overridden if null
+		callsign: "foobarbaz", // Default, will be overridden if null
 	};
 
 	const mockRepository = {
@@ -243,7 +242,7 @@ describe("isMatchingIntegrationSetting", () => {
 		url: "https://api.github.com/repos/giselles-ai/TEST_REPO/issues/comments/1",
 		html_url:
 			"https://github.com/giselles-ai/TEST_REPO/issues/1#issuecomment-1",
-		body: "/giselle do something",
+		body: "/giselle foobarbaz do something",
 		user: {
 			id: 1,
 			node_id: "user-node-1",
@@ -404,17 +403,12 @@ describe("isMatchingIntegrationSetting", () => {
 		changed_files: 2,
 	} satisfies PullRequest;
 
-	const mockCommand: Command = {
-		callsign: "/giselle",
-		content: "do something",
-	};
-
 	// --- Tests for github.issue_comment.created ---
 	describe("when setting.event is github.issue_comment.created", () => {
 		const setting = {
 			...mockSettingBase,
 			event: "github.issue_comment.created" as const,
-			callsign: "/giselle",
+			callsign: "foobarbaz",
 		};
 
 		const issueCommentCreatedEvent = {
@@ -431,30 +425,29 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is ISSUE_COMMENT_CREATED and callsigns match", () => {
 			const event = issueCommentCreatedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, mockCommand)).toBe(
-				true,
-			);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is ISSUE_COMMENT_CREATED but callsigns do not match", () => {
-			const event = issueCommentCreatedEvent;
-			const differentCommand: Command = { ...mockCommand, callsign: "/other" };
-			expect(
-				isMatchingIntegrationSetting(setting, event, differentCommand),
-			).toBe(false);
+			const event = {
+				...issueCommentCreatedEvent,
+				payload: {
+					...issueCommentCreatedEvent.payload,
+					comment: {
+						...issueCommentCreatedEvent.payload.comment,
+						body: "/giselle different-callsign Test comment body",
+					},
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 
 		it("should return false if event type is ISSUE_COMMENT_CREATED but setting.callsign is null", () => {
 			const nullCallsignSetting = { ...setting, callsign: null };
 			const event = issueCommentCreatedEvent;
-			expect(
-				isMatchingIntegrationSetting(nullCallsignSetting, event, mockCommand),
-			).toBe(false);
-		});
-
-		it("should return false if event type is ISSUE_COMMENT_CREATED but command is null", () => {
-			const event = issueCommentCreatedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(nullCallsignSetting, event)).toBe(
+				false,
+			);
 		});
 
 		it("should return false if event type is not ISSUE_COMMENT_CREATED", () => {
@@ -468,9 +461,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, mockCommand)).toBe(
-				false,
-			);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -479,7 +470,7 @@ describe("isMatchingIntegrationSetting", () => {
 		const setting = {
 			...mockSettingBase,
 			event: "github.pull_request_comment.created" as const,
-			callsign: "/giselle",
+			callsign: "foobarbaz",
 		};
 
 		const issueCommentCreatedEvent = {
@@ -497,30 +488,29 @@ describe("isMatchingIntegrationSetting", () => {
 		// These tests are identical to issue_comment.created logic
 		it("should return true if event type is ISSUE_COMMENT_CREATED and callsigns match", () => {
 			const event = issueCommentCreatedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, mockCommand)).toBe(
-				true,
-			);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is ISSUE_COMMENT_CREATED but callsigns do not match", () => {
-			const event = issueCommentCreatedEvent;
-			const differentCommand: Command = { ...mockCommand, callsign: "/other" };
-			expect(
-				isMatchingIntegrationSetting(setting, event, differentCommand),
-			).toBe(false);
+			const event = {
+				...issueCommentCreatedEvent,
+				payload: {
+					...issueCommentCreatedEvent.payload,
+					comment: {
+						...issueCommentCreatedEvent.payload.comment,
+						body: "/giselle different-callsign do something",
+					},
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 
 		it("should return false if event type is ISSUE_COMMENT_CREATED but setting.callsign is null", () => {
 			const nullCallsignSetting = { ...setting, callsign: null };
 			const event = issueCommentCreatedEvent;
-			expect(
-				isMatchingIntegrationSetting(nullCallsignSetting, event, mockCommand),
-			).toBe(false);
-		});
-
-		it("should return false if event type is ISSUE_COMMENT_CREATED but command is null", () => {
-			const event = issueCommentCreatedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(nullCallsignSetting, event)).toBe(
+				false,
+			);
 		});
 
 		it("should return false if event type is not ISSUE_COMMENT_CREATED", () => {
@@ -534,9 +524,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, mockCommand)).toBe(
-				false,
-			);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -560,7 +548,7 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is ISSUES_OPENED", () => {
 			const event = issuesOpenedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(true);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is not ISSUES_OPENED (using ISSUES_CLOSED)", () => {
@@ -578,7 +566,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -606,7 +594,7 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is ISSUES_CLOSED", () => {
 			const event = issuesClosedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(true);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is not ISSUES_CLOSED (using ISSUES_OPENED)", () => {
@@ -620,7 +608,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -645,7 +633,7 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is PULL_REQUEST_OPENED", () => {
 			const event = pullRequestOpenedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(true);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is not PULL_REQUEST_OPENED (using ISSUES_OPENED)", () => {
@@ -659,7 +647,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -687,7 +675,7 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is PULL_REQUEST_READY_FOR_REVIEW", () => {
 			const event = pullRequestReadyForReviewEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(true);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is not PULL_REQUEST_READY_FOR_REVIEW (using PULL_REQUEST_OPENED)", () => {
@@ -702,7 +690,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 
@@ -732,7 +720,7 @@ describe("isMatchingIntegrationSetting", () => {
 
 		it("should return true if event type is PULL_REQUEST_CLOSED", () => {
 			const event = pullRequestClosedEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(true);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
 		});
 
 		it("should return false if event type is not PULL_REQUEST_CLOSED (using PULL_REQUEST_OPENED)", () => {
@@ -747,7 +735,7 @@ describe("isMatchingIntegrationSetting", () => {
 					sender: mockUser,
 				},
 			} satisfies GitHubEvent;
-			expect(isMatchingIntegrationSetting(setting, event, null)).toBe(false);
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
 		});
 	});
 });

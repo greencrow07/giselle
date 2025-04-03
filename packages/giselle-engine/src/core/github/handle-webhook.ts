@@ -114,17 +114,15 @@ export async function handleWebhook(args: HandleGitHubWebhookArgs) {
 			repositoryNodeId: repository.nodeId,
 		});
 
-	const command = parseCommandFromEvent(gitHubEvent);
 	const matchedIntegrationSettings =
 		workspaceGitHubIntegrationRepositorySettings?.filter((setting) =>
-			isMatchingIntegrationSetting(setting, gitHubEvent, command),
+			isMatchingIntegrationSetting(setting, gitHubEvent),
 		) ?? [];
 
 	const integrationPromises = matchedIntegrationSettings.map((setting) =>
 		processIntegration(
 			setting,
 			gitHubEvent,
-			command,
 			repository,
 			args.context,
 			args.options,
@@ -137,12 +135,13 @@ export async function handleWebhook(args: HandleGitHubWebhookArgs) {
 async function processIntegration(
 	setting: WorkspaceGitHubIntegrationSetting,
 	gitHubEvent: GitHubEvent,
-	command: Command | null,
 	repository: { owner: string; name: string; nodeId: string },
 	context: GiselleEngineContext,
 	options?: HandleGitHubWebhookOptions,
 ): Promise<HandleGitHubWebhookResult[]> {
 	await handleReaction(gitHubEvent, options);
+
+	const command = parseCommandFromEvent(gitHubEvent);
 
 	const overrideNodes: OverrideNode[] = [];
 	const workspace = await getWorkspace({
@@ -326,8 +325,9 @@ async function processIntegration(
 export function isMatchingIntegrationSetting(
 	setting: WorkspaceGitHubIntegrationSetting,
 	event: GitHubEvent,
-	command: Command | null,
 ): boolean {
+	const command = parseCommandFromEvent(event);
+
 	switch (setting.event) {
 		case "github.issue_comment.created":
 		case "github.pull_request_comment.created":
@@ -551,7 +551,10 @@ function getRepositoryInfo(event: GitHubEvent) {
 }
 
 function parseCommandFromEvent(event: GitHubEvent): Command | null {
-	if (event.type !== GitHubEventType.ISSUE_COMMENT_CREATED) {
+	if (
+		event.type !== GitHubEventType.ISSUE_COMMENT_CREATED &&
+		event.type !== GitHubEventType.DISCUSSION_COMMENT_CREATED
+	) {
 		return null;
 	}
 	return parseCommandInternal(event.payload.comment.body);
