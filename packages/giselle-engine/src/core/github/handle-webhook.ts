@@ -1,5 +1,6 @@
 import {
 	type OverrideNode,
+	WorkspaceGitHubIntegrationNextActionDiscussionCommentCreate,
 	WorkspaceGitHubIntegrationNextActionIssueCommentCreate,
 	WorkspaceGitHubIntegrationNextActionPullRequestCommentCreate,
 	type WorkspaceGitHubIntegrationPayloadField,
@@ -47,9 +48,22 @@ export const PullRequestCommentCreateAction = z.object({
 type PullRequestCommentCreateAction = z.infer<
 	typeof PullRequestCommentCreateAction
 >;
+export const DiscussionCommentCreateAction = z.object({
+	action: WorkspaceGitHubIntegrationNextActionDiscussionCommentCreate,
+	discussion: z.object({
+		nodeId: z.string(),
+	}),
+	replyToId: z.string().optional(),
+	content: z.string(),
+});
+type DiscussionCommentCreateAction = z.infer<
+	typeof DiscussionCommentCreateAction
+>;
+
 export const HandleGitHubWebhookResult = z.discriminatedUnion("action", [
 	IssueCommentCreateAction,
 	PullRequestCommentCreateAction,
+	DiscussionCommentCreateAction,
 ]);
 export type HandleGitHubWebhookResult = z.infer<
 	typeof HandleGitHubWebhookResult
@@ -62,7 +76,7 @@ type PullRequestDiffFn = (
 ) => Promise<string>;
 export interface HandleGitHubWebhookOptions {
 	pullRequestDiff?: PullRequestDiffFn;
-	addReactionToComment?: (
+	addReactionToIssueComment?: (
 		owner: string,
 		repo: string,
 		commentId: number,
@@ -72,6 +86,7 @@ export interface HandleGitHubWebhookOptions {
 		repo: string,
 		issueId: number,
 	) => Promise<void>;
+	addReactionToNode?: (nodeId: string) => Promise<void>;
 }
 export interface HandleGitHubWebhookArgs {
 	github: {
@@ -221,7 +236,43 @@ async function processIntegration(
 	for (const result of results) {
 		for (const resultText of result) {
 			switch (setting.nextAction) {
+				case "github.issue_comment.create": {
+					let issueNumber: number;
+					if ("issue" in gitHubEvent.payload) {
+						issueNumber = gitHubEvent.payload.issue.number;
+					} else {
+						throw new Error(
+							`${setting.nextAction} is not supported for ${gitHubEvent.type}`,
+						);
+					}
+
+					webhookResults.push({
+						action: "github.issue_comment.create",
+						issue: {
+							repo: {
+								owner: repository.owner,
+								name: repository.name,
+							},
+							number: issueNumber,
+						},
+						content: resultText,
+					});
+					break;
+				}
 				case "github.pull_request_comment.create": {
+					let pullRequestNumber: number;
+
+					if ("issue" in gitHubEvent.payload) {
+						// Some GitHub events treats pull requests as issues.
+						pullRequestNumber = gitHubEvent.payload.issue.number;
+					} else if ("pull_request" in gitHubEvent.payload) {
+						pullRequestNumber = gitHubEvent.payload.pull_request.number;
+					} else {
+						throw new Error(
+							`${setting.nextAction} is not supported for ${gitHubEvent.type}`,
+						);
+					}
+
 					webhookResults.push({
 						action: "github.pull_request_comment.create",
 						pullRequest: {
@@ -239,20 +290,25 @@ async function processIntegration(
 					});
 					break;
 				}
-				case "github.issue_comment.create": {
+				case "github.discussion_comment.create": {
+					let discussionNodeId: string;
+					if ("discussion" in gitHubEvent.payload) {
+						discussionNodeId = gitHubEvent.payload.discussion.node_id;
+					} else {
+						throw new Error(
+							`${setting.nextAction} is not supported for ${gitHubEvent.type}`,
+						);
+					}
+					let replyToId: string | undefined;
+					if ("comment" in gitHubEvent.payload) {
+						replyToId = gitHubEvent.payload.comment.node_id;
+					}
 					webhookResults.push({
-						action: "github.issue_comment.create",
-						issue: {
-							repo: {
-								owner: repository.owner,
-								name: repository.name,
-							},
-							// Some GitHub events treats pull requests as issues.
-							number:
-								"issue" in gitHubEvent.payload
-									? gitHubEvent.payload.issue.number
-									: gitHubEvent.payload.pull_request.number,
+						action: "github.discussion_comment.create",
+						discussion: {
+							nodeId: discussionNodeId,
 						},
+						replyToId,
 						content: resultText,
 					});
 					break;
@@ -290,6 +346,16 @@ export function isMatchingIntegrationSetting(
 			return event.type === GitHubEventType.PULL_REQUEST_READY_FOR_REVIEW;
 		case "github.pull_request.closed":
 			return event.type === GitHubEventType.PULL_REQUEST_CLOSED;
+		case "github.discussion.created":
+			return event.type === GitHubEventType.DISCUSSION_CREATED;
+		case "github.discussion.closed":
+			return event.type === GitHubEventType.DISCUSSION_CLOSED;
+		case "github.discussion_comment.created":
+			return (
+				event.type === GitHubEventType.DISCUSSION_COMMENT_CREATED &&
+				setting.callsign !== null &&
+				setting.callsign === command?.callsign
+			);
 		default: {
 			const _exhaustiveCheck: never = setting.event;
 			throw new Error(`Unhandled setting event type: ${_exhaustiveCheck}`);
@@ -301,9 +367,13 @@ async function handleReaction(
 	event: GitHubEvent,
 	options?: HandleGitHubWebhookOptions,
 ) {
+	if (!options) {
+		return;
+	}
+
 	switch (event.type) {
 		case GitHubEventType.ISSUE_COMMENT_CREATED:
-			await options?.addReactionToComment?.(
+			await options.addReactionToIssueComment?.(
 				event.payload.repository.owner.login,
 				event.payload.repository.name,
 				event.payload.comment.id,
@@ -311,25 +381,33 @@ async function handleReaction(
 			break;
 		case GitHubEventType.ISSUES_OPENED:
 		case GitHubEventType.ISSUES_CLOSED:
-			if (options?.addReactionToIssue) {
-				await options.addReactionToIssue(
-					event.payload.repository.owner.login,
-					event.payload.repository.name,
-					event.payload.issue.number,
-				);
-			}
+			await options.addReactionToIssue?.(
+				event.payload.repository.owner.login,
+				event.payload.repository.name,
+				event.payload.issue.id,
+			);
 			break;
+
 		case GitHubEventType.PULL_REQUEST_OPENED:
 		case GitHubEventType.PULL_REQUEST_READY_FOR_REVIEW:
 		case GitHubEventType.PULL_REQUEST_CLOSED:
-			if (options?.addReactionToIssue) {
-				await options.addReactionToIssue(
-					event.payload.repository.owner.login,
-					event.payload.repository.name,
-					event.payload.pull_request.number,
-				);
-			}
+			// Pull request are treated as issue.
+			await options.addReactionToIssue?.(
+				event.payload.repository.owner.login,
+				event.payload.repository.name,
+				event.payload.pull_request.id,
+			);
 			break;
+
+		case GitHubEventType.DISCUSSION_CREATED:
+		case GitHubEventType.DISCUSSION_CLOSED:
+			await options.addReactionToNode?.(event.payload.discussion.node_id);
+			break;
+
+		case GitHubEventType.DISCUSSION_COMMENT_CREATED:
+			await options.addReactionToNode?.(event.payload.comment.node_id);
+			break;
+
 		default: {
 			const _exhaustiveCheck: never = event;
 			throw new Error(`Unhandled event type for reaction: ${_exhaustiveCheck}`);
@@ -345,6 +423,7 @@ async function getPayloadValue(
 ): Promise<string | number> {
 	switch (event.type) {
 		case GitHubEventType.ISSUE_COMMENT_CREATED:
+			// Pull request comments are treated as issue comments.
 			switch (field) {
 				case "github.pull_request_comment.pull_request.title":
 				case "github.issue_comment.issue.title":
@@ -414,6 +493,41 @@ async function getPayloadValue(
 					);
 					return diffResult ?? "";
 				}
+				default: {
+					throw new Error(
+						`Unhandled field type: ${field} for event ${event.type}`,
+					);
+				}
+			}
+
+		case GitHubEventType.DISCUSSION_CREATED:
+		case GitHubEventType.DISCUSSION_CLOSED:
+			switch (field) {
+				case "github.discussion.title":
+					return event.payload.discussion.title;
+				case "github.discussion.body":
+					return event.payload.discussion.body ?? "";
+				default: {
+					throw new Error(
+						`Unhandled field type: ${field} for event ${event.type}`,
+					);
+				}
+			}
+
+		case GitHubEventType.DISCUSSION_COMMENT_CREATED:
+			switch (field) {
+				case "github.discussion_comment.discussion.title":
+					return event.payload.discussion.title;
+				case "github.discussion_comment.discussion.body":
+					return event.payload.discussion.body ?? "";
+				case "github.discussion_comment.body":
+					return command ?? "";
+				case "github.discussion_comment.discussion.number":
+					return event.payload.discussion.number;
+				case "github.discussion_comment.discussion.repository.owner":
+					return event.payload.repository.owner.login;
+				case "github.discussion_comment.discussion.repository.name":
+					return event.payload.repository.name;
 				default: {
 					throw new Error(
 						`Unhandled field type: ${field} for event ${event.type}`,

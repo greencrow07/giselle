@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 					event: request.headers.get("X-GitHub-Event") as WebhookEventName,
 					payload,
 					options: {
-						addReactionToComment: async (owner, repo, comment_id) => {
+						addReactionToIssueComment: async (owner, repo, comment_id) => {
 							await octokit.request(
 								"POST /repos/{owner}/{repo}/issues/comments/{comment_id}/reactions",
 								{
@@ -78,6 +78,26 @@ export async function POST(request: NextRequest) {
 									repo,
 									issue_number: issue_id,
 									content: "eyes",
+								},
+							);
+						},
+						addReactionToNode: async (nodeId) => {
+							await octokit.graphql(
+								`mutation AddReactionToDiscussion($input: AddReactionInput!) {
+									addReaction(input: $input) {
+										reaction {
+											content
+										}
+										subject {
+											id
+										}
+									}
+								}`,
+								{
+									input: {
+										subjectId: nodeId,
+										content: "eyes",
+									},
 								},
 							);
 						},
@@ -129,6 +149,26 @@ export async function POST(request: NextRequest) {
 									},
 								);
 								break;
+							case "github.discussion_comment.create":
+								await octokit.graphql(
+									`mutation AddDiscussionComment($input: AddDiscussionCommentInput!) {
+										addDiscussionComment(input: $input) {
+											comment {
+												id
+												body
+											}
+										}
+									}`,
+									{
+										input: {
+											discussionId: result.discussion.nodeId,
+											body: result.content,
+											replyToId: result.replyToId,
+										},
+									},
+								);
+								break;
+
 							default: {
 								const _exhaustiveCheck: never = result;
 								throw new Error(`Unhandled action: ${_exhaustiveCheck}`);

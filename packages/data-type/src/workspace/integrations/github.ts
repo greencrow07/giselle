@@ -15,6 +15,9 @@ export const WorkspaceGitHubIntegrationTrigger = z.enum([
 	"github.pull_request.opened",
 	"github.pull_request.ready_for_review",
 	"github.pull_request.closed",
+	"github.discussion.created",
+	"github.discussion_comment.created",
+	"github.discussion.closed",
 ]);
 export type WorkspaceGitHubIntegrationTrigger = z.infer<
 	typeof WorkspaceGitHubIntegrationTrigger
@@ -25,10 +28,13 @@ export const WorkspaceGitHubIntegrationNextActionIssueCommentCreate = z.literal(
 );
 export const WorkspaceGitHubIntegrationNextActionPullRequestCommentCreate =
 	z.literal("github.pull_request_comment.create");
+export const WorkspaceGitHubIntegrationNextActionDiscussionCommentCreate =
+	z.literal("github.discussion_comment.create");
 
 export const WorkspaceGitHubIntegrationNextAction = z.enum([
 	WorkspaceGitHubIntegrationNextActionIssueCommentCreate._def.value,
 	WorkspaceGitHubIntegrationNextActionPullRequestCommentCreate._def.value,
+	WorkspaceGitHubIntegrationNextActionDiscussionCommentCreate._def.value,
 ]);
 export type WorkspaceGitHubNextIntegrationAction = z.infer<
 	typeof WorkspaceGitHubIntegrationNextAction
@@ -53,6 +59,14 @@ export const WorkspaceGitHubIntegrationPayloadField = z.enum([
 	"github.pull_request.title",
 	"github.pull_request.body",
 	"github.pull_request.diff",
+	"github.discussion.title",
+	"github.discussion.body",
+	"github.discussion_comment.discussion.number",
+	"github.discussion_comment.discussion.repository.owner",
+	"github.discussion_comment.discussion.repository.name",
+	"github.discussion_comment.body",
+	"github.discussion_comment.discussion.title",
+	"github.discussion_comment.discussion.body",
 ]);
 export type WorkspaceGitHubIntegrationPayloadField = z.infer<
 	typeof WorkspaceGitHubIntegrationPayloadField

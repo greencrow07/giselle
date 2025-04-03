@@ -1,4 +1,6 @@
 import type {
+	DiscussionCommentCreatedEvent,
+	DiscussionCreatedEvent,
 	IssueCommentCreatedEvent,
 	IssuesClosedEvent,
 	IssuesOpenedEvent,
@@ -6,6 +8,7 @@ import type {
 	PullRequestOpenedEvent,
 	PullRequestReadyForReviewEvent,
 } from "@octokit/webhooks-types";
+import type { DiscussionClosedEvent } from "./discussion-types";
 import { type GitHubEvent, GitHubEventType } from "./types";
 
 function isIssueCommentCreatedPayload(
@@ -122,6 +125,63 @@ function isPullRequestClosedPayload(
 	);
 }
 
+function isDiscussionCreatedPayload(
+	event: string,
+	payload: unknown,
+): payload is DiscussionCreatedEvent {
+	return (
+		event === "discussion" &&
+		typeof payload === "object" &&
+		payload !== null &&
+		"action" in payload &&
+		payload.action === "created" &&
+		"discussion" in payload &&
+		typeof payload.discussion === "object" &&
+		payload.discussion !== null &&
+		"repository" in payload &&
+		typeof payload.repository === "object" &&
+		payload.repository !== null
+	);
+}
+
+function isDiscussionCommentCreatedPayload(
+	event: string,
+	payload: unknown,
+): payload is DiscussionCommentCreatedEvent {
+	return (
+		event === "discussion_comment" &&
+		typeof payload === "object" &&
+		payload !== null &&
+		"action" in payload &&
+		payload.action === "created" &&
+		"comment" in payload &&
+		typeof payload.comment === "object" &&
+		payload.comment !== null &&
+		"repository" in payload &&
+		typeof payload.repository === "object" &&
+		payload.repository !== null
+	);
+}
+
+function isDiscussionClosedPayload(
+	event: string,
+	payload: unknown,
+): payload is DiscussionClosedEvent {
+	return (
+		event === "discussion" &&
+		typeof payload === "object" &&
+		payload !== null &&
+		"action" in payload &&
+		payload.action === "closed" &&
+		"discussion" in payload &&
+		typeof payload.discussion === "object" &&
+		payload.discussion !== null &&
+		"repository" in payload &&
+		typeof payload.repository === "object" &&
+		payload.repository !== null
+	);
+}
+
 export function determineGitHubEvent(
 	event: string,
 	payload: unknown,
@@ -170,6 +230,30 @@ export function determineGitHubEvent(
 		return {
 			type: GitHubEventType.PULL_REQUEST_CLOSED,
 			event: "pull_request",
+			payload,
+		};
+	}
+
+	if (isDiscussionCreatedPayload(event, payload)) {
+		return {
+			type: GitHubEventType.DISCUSSION_CREATED,
+			event: "discussion",
+			payload,
+		};
+	}
+
+	if (isDiscussionCommentCreatedPayload(event, payload)) {
+		return {
+			type: GitHubEventType.DISCUSSION_COMMENT_CREATED,
+			event: "discussion_comment",
+			payload,
+		};
+	}
+
+	if (isDiscussionClosedPayload(event, payload)) {
+		return {
+			type: GitHubEventType.DISCUSSION_CLOSED,
+			event: "discussion",
 			payload,
 		};
 	}

@@ -26,6 +26,7 @@ const NEXT_ACTION_DISPLAY_NAMES: Record<
 > = {
 	"github.issue_comment.create": "Create Issue Comment",
 	"github.pull_request_comment.create": "Create Pull Request Comment",
+	"github.discussion_comment.create": "Create Discussion Comment",
 } as const;
 
 const TRIGGER_TO_ACTIONS: Record<
@@ -41,6 +42,9 @@ const TRIGGER_TO_ACTIONS: Record<
 		"github.pull_request_comment.create",
 	],
 	"github.pull_request.closed": ["github.pull_request_comment.create"],
+	"github.discussion.created": ["github.discussion_comment.create"],
+	"github.discussion_comment.created": ["github.discussion_comment.create"],
+	"github.discussion.closed": ["github.discussion_comment.create"],
 } as const;
 
 const TRIGGERS_REQUIRING_CALLSIGN: readonly WorkspaceGitHubIntegrationTrigger[] =
@@ -265,6 +269,33 @@ function Installed({
 										}
 									>
 										pull_request_comment.created
+									</SelectItem>
+									<SelectItem
+										value={
+											WorkspaceGitHubIntegrationTrigger.Enum[
+												"github.discussion.created"
+											]
+										}
+									>
+										discussion.created
+									</SelectItem>
+									<SelectItem
+										value={
+											WorkspaceGitHubIntegrationTrigger.Enum[
+												"github.discussion_comment.created"
+											]
+										}
+									>
+										discussion_comment.created
+									</SelectItem>
+									<SelectItem
+										value={
+											WorkspaceGitHubIntegrationTrigger.Enum[
+												"github.discussion.closed"
+											]
+										}
+									>
+										discussion.closed
 									</SelectItem>
 								</SelectContent>
 							</Select>
