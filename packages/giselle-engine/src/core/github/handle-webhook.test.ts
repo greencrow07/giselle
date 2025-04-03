@@ -1,5 +1,9 @@
 import type { WorkspaceGitHubIntegrationSetting } from "@giselle-sdk/data-type";
 import type {
+	AuthorAssociation,
+	Discussion,
+	DiscussionCategory,
+	DiscussionCommentCreatedEvent,
 	Issue,
 	IssueComment,
 	PullRequest,
@@ -733,6 +737,330 @@ describe("isMatchingIntegrationSetting", () => {
 					repository: mockRepository,
 					pull_request: mockPullRequest,
 					sender: mockUser,
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
+		});
+	});
+
+	// --- Tests for github.discussion.created ---
+	describe("when setting.event is github.discussion.created", () => {
+		const setting = {
+			...mockSettingBase,
+			event: "github.discussion.created" as const,
+			callsign: "foobarbaz",
+		};
+
+		const mockDiscussionCategory = {
+			id: 1,
+			node_id: "category-node-1",
+			repository_id: 1,
+			emoji: ":speech_balloon:",
+			name: "General",
+			description: "General discussions",
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			slug: "general",
+			is_answerable: false,
+		} satisfies DiscussionCategory;
+
+		const mockDiscussion = {
+			id: 1,
+			node_id: "discussion-node-1",
+			number: 1,
+			title: "Test Discussion",
+			body: "Test discussion body",
+			html_url: "https://github.com/giselles-ai/TEST_REPO/discussions/1",
+			repository_url: "https://api.github.com/repos/giselles-ai/TEST_REPO",
+			category: mockDiscussionCategory,
+			user: mockUser,
+			state: "open" as const,
+			locked: false,
+			comments: 0,
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			author_association: "OWNER" as AuthorAssociation,
+			active_lock_reason: null,
+			answer_html_url: null,
+			answer_chosen_at: null,
+			answer_chosen_by: null,
+			reactions: {
+				url: "https://api.github.com/repos/giselles-ai/TEST_REPO/discussions/1/reactions",
+				total_count: 0,
+				"+1": 0,
+				"-1": 0,
+				laugh: 0,
+				hooray: 0,
+				confused: 0,
+				heart: 0,
+				rocket: 0,
+				eyes: 0,
+			},
+		} satisfies Discussion;
+
+		it("should return true if event type is DISCUSSION_CREATED", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_CREATED,
+				event: "discussion",
+				payload: {
+					action: "created",
+					discussion: mockDiscussion,
+					repository: mockRepository,
+					sender: mockUser,
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
+		});
+
+		it("should return false if event type is not DISCUSSION_CREATED (using DISCUSSION_CLOSED)", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_CLOSED,
+				event: "discussion",
+				payload: {
+					action: "closed",
+					discussion: {
+						...mockDiscussion,
+						state_reason: "resolved",
+					},
+					repository: mockRepository,
+					sender: mockUser,
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
+		});
+	});
+
+	// --- Tests for github.discussion_comment.created ---
+	describe("when setting.event is github.discussion_comment.created", () => {
+		const setting = {
+			...mockSettingBase,
+			event: "github.discussion_comment.created" as const,
+			callsign: "foobarbaz",
+		};
+
+		const mockDiscussionCategory = {
+			id: 1,
+			node_id: "category-node-1",
+			repository_id: 1,
+			emoji: ":speech_balloon:",
+			name: "General",
+			description: "General discussions",
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			slug: "general",
+			is_answerable: false,
+		} satisfies DiscussionCategory;
+
+		const mockDiscussion = {
+			id: 1,
+			node_id: "discussion-node-1",
+			number: 1,
+			title: "Test Discussion",
+			body: "Test discussion body",
+			html_url: "https://github.com/giselles-ai/TEST_REPO/discussions/1",
+			repository_url: "https://api.github.com/repos/giselles-ai/TEST_REPO",
+			category: mockDiscussionCategory,
+			user: mockUser,
+			state: "open" as const,
+			locked: false,
+			comments: 1,
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			author_association: "OWNER" as AuthorAssociation,
+			active_lock_reason: null,
+			answer_html_url: null,
+			answer_chosen_at: null,
+			answer_chosen_by: null,
+		} satisfies Discussion;
+
+		const mockDiscussionComment = {
+			id: 1,
+			node_id: "discussion-comment-node-1",
+			html_url:
+				"https://github.com/giselles-ai/TEST_REPO/discussions/1#discussioncomment-1",
+			parent_id: null,
+			child_comment_count: 0,
+			repository_url: "https://api.github.com/repos/giselles-ai/TEST_REPO",
+			discussion_id: 1,
+			author_association: "OWNER" as AuthorAssociation,
+			user: mockUser,
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			body: "Test comment body",
+			reactions: {
+				url: "https://api.github.com/repos/giselles-ai/TEST_REPO/discussions/1/reactions",
+				total_count: 0,
+				"+1": 0,
+				"-1": 0,
+				laugh: 0,
+				hooray: 0,
+				confused: 0,
+				heart: 0,
+				rocket: 0,
+				eyes: 0,
+			},
+		} satisfies DiscussionCommentCreatedEvent["comment"];
+
+		it("should return true if event type is DISCUSSION_COMMENT_CREATED and callsigns match", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_COMMENT_CREATED,
+				event: "discussion_comment",
+				payload: {
+					action: "created",
+					discussion: mockDiscussion,
+					comment: {
+						...mockDiscussionComment,
+						body: "/giselle foobarbaz Test comment body",
+					},
+					repository: mockRepository,
+					sender: mockUser,
+					installation: {
+						id: 1,
+						node_id: "installation-node-1",
+					},
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
+		});
+
+		it("should return false if event type is DISCUSSION_COMMENT_CREATED but callsigns do not match", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_COMMENT_CREATED,
+				event: "discussion_comment",
+				payload: {
+					action: "created",
+					discussion: mockDiscussion,
+					comment: {
+						...mockDiscussionComment,
+						body: "/giselle different-callsign Test comment body",
+					},
+					repository: mockRepository,
+					sender: mockUser,
+					installation: {
+						id: 1,
+						node_id: "installation-node-1",
+					},
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
+		});
+
+		it("should return false if event type is DISCUSSION_COMMENT_CREATED but setting.callsign is null", () => {
+			const nullCallsignSetting = { ...setting, callsign: null };
+			const event = {
+				type: GitHubEventType.DISCUSSION_COMMENT_CREATED,
+				event: "discussion_comment",
+				payload: {
+					action: "created",
+					discussion: mockDiscussion,
+					comment: {
+						...mockDiscussionComment,
+						body: "/giselle foobarbaz Test comment body",
+					},
+					repository: mockRepository,
+					sender: mockUser,
+					installation: {
+						id: 1,
+						node_id: "installation-node-1",
+					},
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(nullCallsignSetting, event)).toBe(
+				false,
+			);
+		});
+
+		it("should return false if event type is not DISCUSSION_COMMENT_CREATED", () => {
+			const event = {
+				type: GitHubEventType.ISSUES_OPENED,
+				event: "issues",
+				payload: {
+					action: "opened",
+					repository: mockRepository,
+					issue: mockIssue,
+					sender: mockUser,
+				},
+			} satisfies GitHubEvent;
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
+		});
+	});
+
+	// --- Tests for github.discussion.closed ---
+	describe("when setting.event is github.discussion.closed", () => {
+		const setting = {
+			...mockSettingBase,
+			event: "github.discussion.closed" as const,
+		};
+
+		const mockDiscussionCategory = {
+			id: 1,
+			node_id: "category-node-1",
+			repository_id: 1,
+			emoji: ":speech_balloon:",
+			name: "General",
+			description: "General discussions",
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			slug: "general",
+			is_answerable: false,
+		} satisfies DiscussionCategory;
+
+		const mockDiscussion = {
+			id: 1,
+			node_id: "discussion-node-1",
+			number: 1,
+			title: "Test Discussion",
+			body: "Test discussion body",
+			html_url: "https://github.com/giselles-ai/TEST_REPO/discussions/1",
+			repository_url: "https://api.github.com/repos/giselles-ai/TEST_REPO",
+			category: mockDiscussionCategory,
+			user: mockUser,
+			state: "open",
+			locked: false,
+			comments: 0,
+			created_at: "2024-04-01T00:00:00Z",
+			updated_at: "2024-04-01T00:00:00Z",
+			author_association: "OWNER" as AuthorAssociation,
+			active_lock_reason: null,
+			answer_html_url: null,
+			answer_chosen_at: null,
+			answer_chosen_by: null,
+		} satisfies Discussion;
+
+		it("should return true if event type is DISCUSSION_CLOSED", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_CLOSED,
+				event: "discussion",
+				payload: {
+					action: "closed",
+					discussion: {
+						...mockDiscussion,
+						state_reason: "resolved",
+					},
+					repository: mockRepository,
+					sender: mockUser,
+				},
+			} satisfies GitHubEvent;
+
+			expect(isMatchingIntegrationSetting(setting, event)).toBe(true);
+		});
+
+		it("should return false if event type is not DISCUSSION_CLOSED (using DISCUSSION_CREATED)", () => {
+			const event = {
+				type: GitHubEventType.DISCUSSION_CREATED,
+				event: "discussion",
+				payload: {
+					action: "created",
+					discussion: {
+						...mockDiscussion,
+						state: "open" as const,
+					},
+					repository: mockRepository,
+					sender: mockUser,
+					installation: {
+						id: 1,
+						node_id: "installation-node-1",
+					},
 				},
 			} satisfies GitHubEvent;
 			expect(isMatchingIntegrationSetting(setting, event)).toBe(false);
