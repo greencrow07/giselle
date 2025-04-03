@@ -45,6 +45,9 @@ catalogs:
     '@octokit/openapi-types':
       specifier: 22.2.0
       version: 22.2.0
+    '@octokit/openapi-webhooks-types':
+      specifier: 10.4.0
+      version: 10.4.0
     '@octokit/request-error':
       specifier: 6.1.5
       version: 6.1.5
@@ -855,6 +858,9 @@ importers:
       '@giselle/giselle-sdk-tsconfig':
         specifier: workspace:*
         version: link:../../tools/tsconfig
+      '@octokit/openapi-webhooks-types':
+        specifier: 'catalog:'
+        version: 10.4.0
       '@octokit/webhooks-types':
         specifier: 7.6.1
         version: 7.6.1
@@ -2684,6 +2690,9 @@ packages:
 
   '@octokit/openapi-types@23.0.1':
     resolution: {integrity: sha512-izFjMJ1sir0jn0ldEKhZ7xegCTj/ObmEDlEfpFrx4k/JyZSMRHbO3/rBwgE7f3m2DHt+RrNGIVw4wSmwnm3t/g==}
+
+  '@octokit/openapi-webhooks-types@10.4.0':
+    resolution: {integrity: sha512-HMiF7FUiVBYfp8pPijMTkWuPELQB6XkPftrnSuK1C1YXaaq2+0ganiQkorEQfXTmhtwlgHJwXT6P8miVhIyjQA==}
 
   '@octokit/openapi-webhooks-types@8.3.0':
     resolution: {integrity: sha512-vKLsoR4xQxg4Z+6rU/F65ItTUz/EXbD+j/d4mlq2GW8TsA4Tc8Kdma2JTAAJ5hrKWUQzkR/Esn2fjsqiVRYaQg==}
@@ -10745,6 +10754,8 @@ snapshots:
   '@octokit/openapi-types@22.2.0': {}
 
   '@octokit/openapi-types@23.0.1': {}
+
+  '@octokit/openapi-webhooks-types@10.4.0': {}
 
   '@octokit/openapi-webhooks-types@8.3.0': {}
 

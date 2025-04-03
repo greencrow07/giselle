@@ -75,3 +75,4 @@ catalog:
   gql.tada: 1.8.10
   urql: 4.2.2
   "@octokit/openapi-types": 22.2.0
+  "@octokit/openapi-webhooks-types": 10.4.0

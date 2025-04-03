@@ -45,6 +45,7 @@
 		"@giselle-sdk/utils": "workspace:*",
 		"@giselle/giselle-sdk-tsconfig": "workspace:*",
 		"@octokit/webhooks-types": "7.6.1",
+		"@octokit/openapi-webhooks-types": "catalog:",
 		"@types/react": "catalog:",
 		"tsup": "catalog:",
 		"vitest": "catalog:"
