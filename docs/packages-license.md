@@ -2,7 +2,7 @@
 
 
 ## Summary
-* 1014 MIT
+* 1015 MIT
 * 105 Apache 2.0
 * 58 ISC
 * 34 New BSD
@@ -5217,6 +5217,17 @@ Python-2.0 manually approved
 
 <a name="auto-bind"></a>
 ### auto-bind v4.0.0
+#### 
+
+##### Paths
+* /home/runner/work/giselle/giselle
+
+<a href="http://opensource.org/licenses/mit-license">MIT</a> permitted
+
+
+
+<a name="aws4fetch"></a>
+### aws4fetch v1.0.20
 #### 
 
 ##### Paths
