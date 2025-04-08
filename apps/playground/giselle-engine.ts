@@ -7,15 +7,18 @@ import { NextGiselleEngine } from "giselle-sdk/next";
 
 import { createStorage } from "unstorage";
 import fsDriver from "unstorage/drivers/fs";
-import vercelBlobDriver from "unstorage/drivers/vercel-blob";
+import s3Driver from "unstorage/drivers/s3";
 
-const isVercelEnvironment = process.env.VERCEL === "1";
+const isVercelEnvironment = true;
 
 const storage = createStorage({
 	driver: isVercelEnvironment
-		? vercelBlobDriver({
-				access: "public",
-				base: "private-beta",
+		? s3Driver({
+				accessKeyId: process.env.SUPABASE_ACCESS_KEY_ID ?? "",
+				secretAccessKey: process.env.SUPABASE_SECRET_ACCESS_KEY ?? "",
+				endpoint: "https://tgcufejmblzzwntopjiy.supabase.co/storage/v1/s3",
+				region: "us-west-1",
+				bucket: "experiment",
 			})
 		: fsDriver({
 				base: "./.storage",
