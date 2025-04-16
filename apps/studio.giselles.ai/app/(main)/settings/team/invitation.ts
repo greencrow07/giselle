@@ -71,7 +71,9 @@ export async function sendInvitationEmail(
 
 	await sendEmail(
 		"Invitation to join team",
-		`You have been invited to join the team ${teamName} by ${inviterDisplayName}.`,
+		`You have been invited to join the team ${teamName} by ${inviterDisplayName}.\n\n${buildJoinLink(
+			invitation.token,
+		)}`,
 		[
 			{
 				userDisplayName: "",
@@ -79,6 +81,13 @@ export async function sendInvitationEmail(
 			},
 		],
 	);
+}
+
+function buildJoinLink(token: string) {
+	const baseUrl =
+		process.env.NEXT_PUBLIC_SITE_URL || "https://studio.giselles.ai";
+
+	return `${baseUrl}/join/${token}`;
 }
 
 export async function listInvitations() {
