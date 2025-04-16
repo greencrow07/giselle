@@ -14,6 +14,7 @@ import {
 } from "@/drizzle";
 import { updateGiselleSession } from "@/lib/giselle-session";
 import { getUser } from "@/lib/supabase";
+import { fetchCurrentUser } from "@/services/accounts";
 import { stripe } from "@/services/external/stripe";
 import { fetchCurrentTeam, isProPlan } from "@/services/teams";
 import type { CurrentTeam, TeamId } from "@/services/teams/types";
@@ -21,6 +22,11 @@ import { reportUserSeatUsage } from "@/services/usage-based-billing";
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+	type Invitation,
+	createInvitation,
+	sendInvitationEmail,
+} from "./invitation";
 
 function isUserId(value: string): value is UserId {
 	return value.startsWith("usr_");
@@ -108,7 +114,9 @@ export async function getTeamMembers() {
 	}
 }
 
-export async function addTeamMember(formData: FormData) {
+export async function addTeamMember(
+	formData: FormData,
+): Promise<{ success: boolean; error?: string }> {
 	try {
 		const email = formData.get("email") as string;
 		const role = formData.get("role") as string;
@@ -597,4 +605,94 @@ async function handleMemberChange(currentTeam: CurrentTeam) {
 			? subscription.customer
 			: subscription.customer.id;
 	await reportUserSeatUsage(subscriptionId, customer);
+}
+
+// Define result types for sendInvitations
+type InvitationResult = {
+	email: string;
+	status: "success" | "db_error" | "email_error" | "unknown_error";
+	error?: string;
+};
+
+export type SendInvitationsResult = {
+	overallStatus: "success" | "partial_success" | "failure";
+	results: InvitationResult[];
+};
+
+// Update sendInvitations function
+export async function sendInvitations(
+	emails: string[],
+	role: TeamRole,
+): Promise<SendInvitationsResult> {
+	const currentUser = await fetchCurrentUser();
+	const currentTeam = await fetchCurrentTeam();
+
+	const invitationPromises = emails.map(
+		async (email): Promise<InvitationResult> => {
+			let invitation: Invitation | null = null;
+			try {
+				invitation = await createInvitation(
+					email,
+					role,
+					currentTeam,
+					currentUser,
+				);
+				await sendInvitationEmail(invitation);
+				return { email, status: "success" };
+			} catch (error: unknown) {
+				const status = invitation ? "email_error" : "db_error";
+				console.error(`Failed to process invitation for ${email}:`, error);
+				const errorMessage =
+					error instanceof Error
+						? error.message
+						: "Unknown error during invitation process";
+				return { email, status, error: errorMessage };
+			}
+		},
+	);
+
+	const settledResults = await Promise.allSettled(invitationPromises);
+
+	const detailedResults: InvitationResult[] = settledResults.map(
+		(result, index) => {
+			if (result.status === "fulfilled") {
+				return result.value;
+			}
+			// Handle unexpected errors during the Promise execution itself
+			console.error(
+				`Unexpected error processing invitation for ${emails[index]}:`,
+				result.reason,
+			);
+			const reason = result.reason as unknown;
+			const errorMessage =
+				reason instanceof Error
+					? reason.message
+					: "Unexpected processing error";
+			return {
+				email: emails[index],
+				status: "unknown_error",
+				error: errorMessage,
+			};
+		},
+	);
+
+	const successfulCount = detailedResults.filter(
+		(r) => r.status === "success",
+	).length;
+	let overallStatus: SendInvitationsResult["overallStatus"];
+	if (successfulCount === emails.length) {
+		overallStatus = "success";
+	} else if (successfulCount > 0) {
+		overallStatus = "partial_success";
+	} else {
+		overallStatus = "failure";
+	}
+
+	// Revalidate path regardless of success/failure to update any potential UI lists
+	revalidatePath("/settings/team/members"); // Adjust path if needed
+
+	return {
+		overallStatus,
+		results: detailedResults,
+	};
 }
