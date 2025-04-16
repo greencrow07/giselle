@@ -685,8 +685,7 @@ export async function sendInvitations(
 		overallStatus = "failure";
 	}
 
-	// Revalidate path regardless of success/failure to update any potential UI lists
-	revalidatePath("/settings/team/members"); // Adjust path if needed
+	revalidatePath("/settings/team/members");
 
 	return {
 		overallStatus,
