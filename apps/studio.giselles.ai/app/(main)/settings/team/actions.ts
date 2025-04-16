@@ -6,6 +6,7 @@ import {
 	agentActivities,
 	agents,
 	db,
+	type invitations,
 	subscriptions,
 	supabaseUserMappings,
 	teamMemberships,
@@ -22,11 +23,7 @@ import { reportUserSeatUsage } from "@/services/usage-based-billing";
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-	type Invitation,
-	createInvitation,
-	sendInvitationEmail,
-} from "./invitation";
+import { createInvitation, sendInvitationEmail } from "./invitation";
 
 function isUserId(value: string): value is UserId {
 	return value.startsWith("usr_");
@@ -629,7 +626,7 @@ export async function sendInvitations(
 
 	const invitationPromises = emails.map(
 		async (email): Promise<InvitationResult> => {
-			let invitation: Invitation | null = null;
+			let invitation: typeof invitations.$inferSelect | null = null;
 			try {
 				invitation = await createInvitation(
 					email,
