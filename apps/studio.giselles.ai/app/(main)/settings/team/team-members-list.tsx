@@ -1,5 +1,7 @@
 import type { TeamRole } from "@/drizzle";
 import type { TeamId } from "@/services/teams/types";
+import type { Invitation } from "./invitation";
+import { InvitationListItem } from "./invitation-list-item";
 import { TeamMemberListItem } from "./team-members-list-item";
 
 type TeamMembersListProps = {
@@ -9,13 +11,8 @@ type TeamMembersListProps = {
 		displayName: string | null;
 		email: string | null;
 		role: TeamRole;
-		isInvited?: boolean;
 	}[];
-	invitations: {
-		email: string;
-		role: TeamRole;
-		expiredAt: Date;
-	}[];
+	invitations: Invitation[];
 	currentUserRole: TeamRole;
 	isProPlan: boolean;
 };
@@ -38,21 +35,17 @@ export async function TeamMembersList({
 					role={member.role}
 					currentUserRole={currentUserRole}
 					isProPlan={isProPlan}
-					isInvited={member.isInvited}
 				/>
 			))}
 
 			{invitations.length > 0 &&
-				invitations.map((invitation, index) => (
-					<TeamMemberListItem
-						key={`invited-${index}-${invitation.email}`}
-						userId={`temp-id-${index}`}
-						displayName={null}
+				invitations.map((invitation) => (
+					<InvitationListItem
+						key={invitation.token}
+						token={invitation.token}
 						email={invitation.email}
 						role={invitation.role}
-						currentUserRole={currentUserRole}
-						isProPlan={isProPlan}
-						isInvited={true}
+						expiredAt={invitation.expiredAt}
 					/>
 				))}
 		</>

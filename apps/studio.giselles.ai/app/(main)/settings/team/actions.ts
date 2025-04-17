@@ -23,7 +23,12 @@ import { reportUserSeatUsage } from "@/services/usage-based-billing";
 import { and, asc, count, desc, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createInvitation, sendInvitationEmail } from "./invitation";
+import {
+	createInvitation,
+	listInvitations,
+	revokeInvitation,
+	sendInvitationEmail,
+} from "./invitation";
 
 function isUserId(value: string): value is UserId {
 	return value.startsWith("usr_");
@@ -691,4 +696,23 @@ export async function sendInvitations(
 		overallStatus,
 		results: detailedResults,
 	};
+}
+
+export async function revokeInvitationAction(formData: FormData) {
+	const token = formData.get("token") as string;
+	await revokeInvitation(token);
+	revalidatePath("/settings/team/members");
+	return { success: true };
+}
+
+export async function resendInvitationAction(formData: FormData) {
+	const token = formData.get("token") as string;
+	const invitations = await listInvitations();
+	const invitation = invitations.find((inv) => inv.token === token);
+	if (!invitation) {
+		throw new Error("Invitation not found");
+	}
+	await sendInvitationEmail(invitation);
+	revalidatePath("/settings/team/members");
+	return { success: true };
 }
