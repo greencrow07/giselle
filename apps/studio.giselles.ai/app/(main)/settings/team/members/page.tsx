@@ -1,9 +1,8 @@
-import type { invitations as invitationSchema } from "@/drizzle";
 import { teamInvitationViaEmailFlag } from "@/flags";
 import { fetchCurrentTeam, isProPlan } from "@/services/teams";
 import { Card } from "../../components/card";
 import { getCurrentUserRole, getTeamMembers } from "../actions";
-import { listInvitations } from "../invitation";
+import { type Invitation, listInvitations } from "../invitation";
 import { InviteMemberDialog } from "../invite-member-dialog";
 import { TeamMembersList } from "../team-members-list";
 
@@ -27,7 +26,7 @@ export default async function TeamMembersPage() {
 	const hasProPlan = isProPlan(team);
 	const teamInvitationViaEmailEnabled = await teamInvitationViaEmailFlag();
 
-	let invitations: (typeof invitationSchema.$inferSelect)[] = [];
+	let invitations: Invitation[] = [];
 	if (teamInvitationViaEmailEnabled) {
 		invitations = await listInvitations();
 	}
