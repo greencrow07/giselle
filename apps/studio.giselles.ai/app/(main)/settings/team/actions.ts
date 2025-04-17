@@ -712,7 +712,19 @@ export async function resendInvitationAction(formData: FormData) {
 	if (!invitation) {
 		throw new Error("Invitation not found");
 	}
-	await sendInvitationEmail(invitation);
+	// 1. revoke existing invitation
+	await revokeInvitation(token);
+	// 2. create new invitation
+	const currentTeam = await fetchCurrentTeam();
+	const currentUser = await fetchCurrentUser();
+	const newInvitation = await createInvitation(
+		invitation.email,
+		invitation.role,
+		currentTeam,
+		currentUser,
+	);
+	// 3. send invitation email
+	await sendInvitationEmail(newInvitation);
 	revalidatePath("/settings/team/members");
 	return { success: true };
 }
