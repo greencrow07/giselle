@@ -19,7 +19,7 @@ import {
 import type { TeamRole } from "@/drizzle";
 import { useToast } from "@/packages/contexts/toast";
 import { Copy, Ellipsis, RefreshCw, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { resendInvitationAction, revokeInvitationAction } from "./actions";
 import { LocalDateTime } from "./components/local-date-time";
 
@@ -36,13 +36,10 @@ export function InvitationListItem({
 	role,
 	expiredAt,
 }: InvitationListItemProps) {
-	const [error, setError] = useState("");
 	const { addToast } = useToast();
+	const [error, setError] = useState("");
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [dropdownOpen, setDropdownOpen] = useState(false);
-
-	const isFirstSuccessRef = useRef(true);
-	const isFirstRevokeSuccessRef = useRef(true);
 
 	// server actions
 	const [revokeState, revoke, revokePending] = useActionState(
@@ -56,49 +53,43 @@ export function InvitationListItem({
 
 	// toasts & close behavior
 	useEffect(() => {
-		if (!revokeState) {
+		if (!revokeState || revokePending) {
 			return;
 		}
-		if (revokeState.success && isFirstRevokeSuccessRef.current) {
-			isFirstRevokeSuccessRef.current = false;
+		if (revokeState.success) {
 			addToast({
 				title: "Success",
 				message: "Invitation revoked!",
 				type: "success",
 			});
-			setTimeout(() => {
-				setDialogOpen(false);
-				setDropdownOpen(false);
-			}, 0);
+			setDialogOpen(false);
+			setDropdownOpen(false);
 		} else if (!revokeState.success) {
 			// revokeState.success is false => error property exists
 			const err = revokeState.error;
 			addToast({ title: "Error", message: err, type: "error" });
 			setError(err);
 		}
-	}, [revokeState, addToast]);
+	}, [revokePending, revokeState, addToast]);
 
 	// react to resend result
 	useEffect(() => {
-		if (!resendState) {
+		if (!resendState || resendPending) {
 			return;
 		}
 
-		if (resendState.success && isFirstSuccessRef.current) {
-			isFirstSuccessRef.current = false;
+		if (resendState.success) {
 			addToast({
 				title: "Success",
 				message: "Invitation resent!",
 				type: "success",
 			});
-			setTimeout(() => {
-				setDropdownOpen(false);
-			}, 0);
+			setDropdownOpen(false);
 		} else if (!resendState.success) {
 			const err = resendState.error;
 			addToast({ title: "Error", message: err, type: "error" });
 		}
-	}, [resendState, addToast]);
+	}, [resendPending, resendState, addToast]);
 
 	const expired = expiredAt.getTime() < Date.now();
 
