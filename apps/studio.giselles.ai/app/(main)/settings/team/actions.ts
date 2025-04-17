@@ -698,33 +698,58 @@ export async function sendInvitations(
 	};
 }
 
-export async function revokeInvitationAction(formData: FormData) {
+// Define a unified result type for actions
+export type ActionResult =
+	| { success: true }
+	| { success: false; error: string };
+
+export async function revokeInvitationAction(
+	formData: FormData,
+): Promise<ActionResult> {
 	const token = formData.get("token") as string;
-	await revokeInvitation(token);
-	revalidatePath("/settings/team/members");
-	return { success: true };
+	try {
+		await revokeInvitation(token);
+		revalidatePath("/settings/team/members");
+		return { success: true };
+	} catch (e: unknown) {
+		console.error("Failed to revoke invitation:", e);
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Unknown error",
+		};
+	}
 }
 
-export async function resendInvitationAction(formData: FormData) {
+export async function resendInvitationAction(
+	formData: FormData,
+): Promise<ActionResult> {
 	const token = formData.get("token") as string;
-	const invitations = await listInvitations();
-	const invitation = invitations.find((inv) => inv.token === token);
-	if (!invitation) {
-		throw new Error("Invitation not found");
+	try {
+		const invitations = await listInvitations();
+		const invitation = invitations.find((inv) => inv.token === token);
+		if (!invitation) {
+			throw new Error("Invitation not found");
+		}
+		// 1. revoke existing invitation
+		await revokeInvitation(token);
+		// 2. create new invitation
+		const currentTeam = await fetchCurrentTeam();
+		const currentUser = await fetchCurrentUser();
+		const newInvitation = await createInvitation(
+			invitation.email,
+			invitation.role,
+			currentTeam,
+			currentUser,
+		);
+		// 3. send invitation email
+		await sendInvitationEmail(newInvitation);
+		revalidatePath("/settings/team/members");
+		return { success: true };
+	} catch (e: unknown) {
+		console.error("Failed to resend invitation:", e);
+		return {
+			success: false,
+			error: e instanceof Error ? e.message : "Unknown error",
+		};
 	}
-	// 1. revoke existing invitation
-	await revokeInvitation(token);
-	// 2. create new invitation
-	const currentTeam = await fetchCurrentTeam();
-	const currentUser = await fetchCurrentUser();
-	const newInvitation = await createInvitation(
-		invitation.email,
-		invitation.role,
-		currentTeam,
-		currentUser,
-	);
-	// 3. send invitation email
-	await sendInvitationEmail(newInvitation);
-	revalidatePath("/settings/team/members");
-	return { success: true };
 }
