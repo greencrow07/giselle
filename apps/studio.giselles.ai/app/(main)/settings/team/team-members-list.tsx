@@ -1,4 +1,7 @@
+"use client";
 import type { TeamRole } from "@/drizzle";
+import { Toast } from "@/packages/components/toast";
+import { useToast } from "@/packages/contexts/toast";
 import type { TeamId } from "@/services/teams/types";
 import type { Invitation } from "./invitation";
 import { InvitationListItem } from "./invitation-list-item";
@@ -17,13 +20,15 @@ type TeamMembersListProps = {
 	isProPlan: boolean;
 };
 
-export async function TeamMembersList({
+export function TeamMembersList({
 	teamId,
 	members,
 	invitations,
 	currentUserRole,
 	isProPlan,
 }: TeamMembersListProps) {
+	const { toasts } = useToast();
+
 	return (
 		<>
 			{members.map((member) => (
@@ -48,6 +53,9 @@ export async function TeamMembersList({
 						expiredAt={invitation.expiredAt}
 					/>
 				))}
+			{toasts.map((toast) => (
+				<Toast key={toast.id} {...toast} />
+			))}
 		</>
 	);
 }
