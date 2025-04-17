@@ -704,6 +704,7 @@ export type ActionResult =
 	| { success: false; error: string };
 
 export async function revokeInvitationAction(
+	prevState: ActionResult | undefined,
 	formData: FormData,
 ): Promise<ActionResult> {
 	const token = formData.get("token") as string;
@@ -721,6 +722,7 @@ export async function revokeInvitationAction(
 }
 
 export async function resendInvitationAction(
+	prevState: ActionResult | undefined,
 	formData: FormData,
 ): Promise<ActionResult> {
 	const token = formData.get("token") as string;

@@ -19,7 +19,7 @@ import {
 import type { TeamRole } from "@/drizzle";
 import { useToast } from "@/packages/contexts/toast";
 import { Copy, Ellipsis, RefreshCw, Trash2 } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { resendInvitationAction, revokeInvitationAction } from "./actions";
 import { LocalDateTime } from "./components/local-date-time";
 
@@ -36,76 +36,71 @@ export function InvitationListItem({
 	role,
 	expiredAt,
 }: InvitationListItemProps) {
-	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState("");
-	const [copied, setCopied] = useState(false);
 	const { addToast } = useToast();
-	const [open, setOpen] = useState(false);
-	const [pendingAction, setPendingAction] = useState<
-		null | "resend" | "revoke"
-	>(null);
+	const [dialogOpen, setDialogOpen] = useState(false);
+	const [dropdownOpen, setDropdownOpen] = useState(false);
 
-	const expired = expiredAt.getTime() < Date.now();
+	const isFirstSuccessRef = useRef(true);
+	const isFirstRevokeSuccessRef = useRef(true);
 
-	// revoke
-	const revokeAction = async (
-		_state: { success: boolean },
-		formData: FormData,
-	) => {
-		setPendingAction("revoke");
-		const result = await revokeInvitationAction(formData);
-		if (result.success) {
+	// server actions
+	const [revokeState, revoke, revokePending] = useActionState(
+		revokeInvitationAction,
+		undefined,
+	);
+	const [resendState, resend, resendPending] = useActionState(
+		resendInvitationAction,
+		undefined,
+	);
+
+	// toasts & close behavior
+	useEffect(() => {
+		if (!revokeState) {
+			return;
+		}
+		if (revokeState.success && isFirstRevokeSuccessRef.current) {
+			isFirstRevokeSuccessRef.current = false;
 			addToast({
 				title: "Success",
 				message: "Invitation revoked!",
 				type: "success",
 			});
-			setOpen(false);
-		} else {
-			addToast({
-				title: "Error",
-				message: result.error,
-				type: "error",
-			});
-			setError(result.error);
+			setTimeout(() => {
+				setDialogOpen(false);
+				setDropdownOpen(false);
+			}, 0);
+		} else if (!revokeState.success) {
+			// revokeState.success is false => error property exists
+			const err = revokeState.error;
+			addToast({ title: "Error", message: err, type: "error" });
+			setError(err);
 		}
-		setPendingAction(null);
-		return result;
-	};
-	const [_, revoke, revokePending] = useActionState(revokeAction, {
-		success: true,
-	});
+	}, [revokeState, addToast]);
 
-	// resend
-	type ResendResult = { success: boolean; error?: string };
-	const resendAction = async (
-		_state: { success: boolean },
-		formData: FormData,
-	): Promise<ResendResult> => {
-		setPendingAction("resend");
-		const result = (await resendInvitationAction(formData)) as ResendResult;
-		if (result?.success) {
+	// react to resend result
+	useEffect(() => {
+		if (!resendState) {
+			return;
+		}
+
+		if (resendState.success && isFirstSuccessRef.current) {
+			isFirstSuccessRef.current = false;
 			addToast({
 				title: "Success",
 				message: "Invitation resent!",
 				type: "success",
 			});
-		} else {
-			addToast({
-				title: "Error",
-				message:
-					result && typeof result.error === "string"
-						? result.error
-						: "Failed to resend invitation",
-				type: "error",
-			});
+			setTimeout(() => {
+				setDropdownOpen(false);
+			}, 0);
+		} else if (!resendState.success) {
+			const err = resendState.error;
+			addToast({ title: "Error", message: err, type: "error" });
 		}
-		setPendingAction(null);
-		return result;
-	};
-	const [_state, resend, _resendPending] = useActionState(resendAction, {
-		success: true,
-	});
+	}, [resendState, addToast]);
+
+	const expired = expiredAt.getTime() < Date.now();
 
 	const handleCopy = async () => {
 		try {
@@ -113,13 +108,12 @@ export function InvitationListItem({
 				process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 			const link = `${baseUrl}/join/${token}`;
 			await navigator.clipboard.writeText(link);
-			setCopied(true);
 			addToast({
 				title: "Copied",
 				message: "Invite link copied!",
 				type: "info",
 			});
-			setTimeout(() => setCopied(false), 2000);
+			setDropdownOpen(false);
 		} catch (e) {
 			console.error("Failed to copy link:", e);
 			addToast({
@@ -155,7 +149,11 @@ export function InvitationListItem({
 					<span className="capitalize text-white-400 font-medium text-[14px] leading-[16px] text-end font-hubot">
 						{role}
 					</span>
-					<DropdownMenu modal={false}>
+					<DropdownMenu
+						modal={false}
+						open={dropdownOpen}
+						onOpenChange={setDropdownOpen}
+					>
 						<DropdownMenuTrigger className="cursor-pointer">
 							<Ellipsis className="text-white-350" />
 						</DropdownMenuTrigger>
@@ -166,36 +164,49 @@ export function InvitationListItem({
 							<button
 								type="button"
 								onClick={handleCopy}
-								disabled={pendingAction !== null}
 								className="flex items-center w-full px-4 py-3 font-medium text-[14px] leading-[16px] text-white-400 hover:bg-black-700"
 								title="Copy invite link"
 							>
 								<Copy className="h-4 w-4 mr-2" /> Copy invite link
 							</button>
-							<form
-								action={resend}
-								className="contents"
-								onSubmit={() => setPendingAction("resend")}
-							>
+							<form action={resend} className="contents">
 								<input type="hidden" name="token" value={token} />
 								<button
 									type="submit"
-									disabled={pendingAction !== null}
+									disabled={resendPending}
 									className="flex items-center w-full px-4 py-3 font-medium text-[14px] leading-[16px] text-white-400 hover:bg-black-700"
 									title="Resend invitation"
 								>
-									<RefreshCw className="h-4 w-4 mr-2" /> Resend invitation
+									{resendPending ? (
+										<>
+											<RefreshCw className="h-4 w-4 animate-spin mr-2" />{" "}
+											Processing...
+										</>
+									) : (
+										<>
+											<RefreshCw className="h-4 w-4 mr-2" /> Resend invitation
+										</>
+									)}
 								</button>
 							</form>
-							<AlertDialog open={open} onOpenChange={setOpen}>
+							<AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
 								<AlertDialogTrigger asChild>
 									<button
 										type="button"
-										disabled={pendingAction !== null}
+										disabled={revokePending}
 										className="flex items-center w-full px-4 py-3 font-medium text-[14px] leading-[16px] text-error-900 hover:bg-black-700"
 										title="Revoke invitation"
 									>
-										<Trash2 className="h-4 w-4 mr-2" /> Revoke invitation
+										{revokePending ? (
+											<>
+												<RefreshCw className="h-4 w-4 animate-spin mr-2" />{" "}
+												Processing...
+											</>
+										) : (
+											<>
+												<Trash2 className="h-4 w-4 mr-2" /> Revoke invitation
+											</>
+										)}
 									</button>
 								</AlertDialogTrigger>
 								<AlertDialogContent className="border-[0.5px] border-black-400 rounded-[8px] bg-black-850">
@@ -217,14 +228,12 @@ export function InvitationListItem({
 										</AlertDialogCancel>
 										<form action={revoke} className="contents">
 											<input type="hidden" name="token" value={token} />
-											<AlertDialogAction asChild>
-												<button
-													type="submit"
-													disabled={revokePending}
-													className="py-2 px-4 rounded-[8px] font-hubot bg-error-900 text-white-400 disabled:bg-error-900 disabled:text-white-400 !bg-error-900 !text-white-400"
-												>
-													Revoke
-												</button>
+											<AlertDialogAction
+												type="submit"
+												disabled={revokePending}
+												className="py-2 px-4 bg-error-900 rounded-[8px] text-white-400 font-hubot"
+											>
+												Revoke
 											</AlertDialogAction>
 										</form>
 									</AlertDialogFooter>
