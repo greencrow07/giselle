@@ -47,6 +47,7 @@ export default async function Layout({
 				metadata: {
 					isProPlan: isProPlan(currentTeam),
 					teamType: currentTeam.type,
+					subscriptionId: currentTeam.activeSubscriptionId ?? '',
 				},
 			}}
 		>
