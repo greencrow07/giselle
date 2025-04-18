@@ -45,9 +45,12 @@ export default async function Layout({
 			usageLimits={usageLimits}
 			telemetry={{
 				metadata: {
+					foo: "bar",
+					subscriptionIdTest: currentTeam.activeSubscriptionId ?? '',
 					isProPlan: isProPlan(currentTeam),
 					teamType: currentTeam.type,
 					subscriptionId: currentTeam.activeSubscriptionId ?? '',
+					test: isProPlan(currentTeam),
 				},
 			}}
 		>
