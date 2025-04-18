@@ -47,11 +47,11 @@ export default async function Layout({
 			telemetry={{
 				metadata: {
 					foo: "bar",
-					subscriptionIdTest: currentTeam.activeSubscriptionId ?? '',
 					id,
+					subscriptionIdTest: currentTeam.activeSubscriptionId ?? "",
 					isProPlan: isProPlan(currentTeam),
 					teamType: currentTeam.type,
-					subscriptionId: currentTeam.activeSubscriptionId ?? '',
+					subscriptionId: currentTeam.activeSubscriptionId ?? "",
 					test: isProPlan(currentTeam),
 				},
 			}}
