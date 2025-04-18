@@ -30,6 +30,7 @@ async function fetchCurrentTeam(): Promise<CurrentTeam> {
 		// fallback to first team
 		return fetchFirstTeam(supabaseUser.id);
 	}
+	console.log("fetchCurrentTeam:", team);
 	return team;
 }
 

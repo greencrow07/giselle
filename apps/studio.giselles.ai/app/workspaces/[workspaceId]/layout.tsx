@@ -29,6 +29,7 @@ export default async function Layout({
 		return notFound();
 	}
 	const usageLimits = await getUsageLimitsForTeam(currentTeam);
+	console.log("layout:", currentTeam);
 	const id = currentTeam.activeSubscriptionId ?? "";
 
 	return (
