@@ -29,6 +29,7 @@ export default async function Layout({
 		return notFound();
 	}
 	const usageLimits = await getUsageLimitsForTeam(currentTeam);
+	const id = currentTeam.activeSubscriptionId ?? "";
 
 	return (
 		<WorkspaceProvider
@@ -47,6 +48,7 @@ export default async function Layout({
 				metadata: {
 					foo: "bar",
 					subscriptionIdTest: currentTeam.activeSubscriptionId ?? '',
+					id,
 					isProPlan: isProPlan(currentTeam),
 					teamType: currentTeam.type,
 					subscriptionId: currentTeam.activeSubscriptionId ?? '',
