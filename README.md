@@ -23,11 +23,11 @@ We host [Giselle](https://giselles.ai/) as a cloud service for anyone to use ins
 
 Follow this [starter guide](CONTRIBUTING.md#development-environment-setup) to get Giselle running in your environment.
 
-### Vibe Cording Guide
+### Vibe Coding Guide
 
 If you're using AI coding assistants like Claude, Cursor, or WindSurf to help build with Giselle, check out our [Vibe Cording Guide](/docs/vibe/01-introduction.md). This guide explains:
 
-- What is vibe cording and how to approach it effectively
+- What is vibe coding and how to approach it effectively
 - How to set up your Node.js environment and install dependencies
 - Understanding Giselle's project structure
 - Running the playground and connecting to LLM providers
